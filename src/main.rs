@@ -1,6 +1,7 @@
-use std::{fs::DirEntry, path::Path, env, time::Instant};
+use std::{fs::DirEntry, path::Path, env, time::Instant, io::Error};
 
 use byte_unit::Byte;
+use tokio::task::JoinSet;
 
 fn get_file_name(entry: &DirEntry) -> Option<String> {
     match entry.file_name().to_str() {
@@ -9,39 +10,52 @@ fn get_file_name(entry: &DirEntry) -> Option<String> {
     }
 }
 
-fn get_size(path: &Path) -> u64 {
+fn cal_size_spawn(entry: Result<DirEntry, Error>, set: &mut JoinSet<u64>) {
+    set.spawn(async move {
+        let entry = match entry {
+            Ok(data) => data,
+            Err(_) => {
+                return 0;
+            }
+        };
+
+        if entry.path().is_dir() {
+            return get_size(entry.path().as_path()).await;
+        }
+
+        let child_size = match entry.metadata() {
+            Ok(data) => data,
+            Err(_) => {
+                return 0;
+            }
+        };
+
+        child_size.len()
+    });
+}
+
+async fn get_size(path: &Path) -> u64 {
     let mut size = 0;
     let children = match path.read_dir() {
         Ok(children) => children,
         Err(_) => return 0,
     };
 
-    for entry in children {
-        let entry = match entry {
-            Ok(data) => data,
-            Err(_) => {
-                continue;
-            }
-        };
+    let mut set = JoinSet::new();
 
-        if entry.path().is_dir() {
-            size += get_size(&entry.path());
-        }
+    for entry in children .into_iter(){
+        cal_size_spawn(entry, &mut set);
+    }
 
-        let child_size = match entry.metadata() {
-            Ok(data) => data,
-            Err(_) => {
-                continue;
-            }
-        };
-
-        size += child_size.len()
+    while let Some(result) = set.join_next().await {
+        size += result.unwrap_or(0);
     }
 
     return size;
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let start = Instant::now();
     let current_directory = env::current_dir().expect("Cannot get current directory");
 
@@ -53,7 +67,7 @@ fn main() {
             };
 
             if file_name == "node_modules" {
-                let node_module_size = Byte::from_bytes(get_size(&child_entry.path()).into());
+                let node_module_size = Byte::from_bytes(get_size(&child_entry.path()).await.into());
                 println!(
                     "{file_name}: {}",
                     node_module_size.get_appropriate_unit(true)
