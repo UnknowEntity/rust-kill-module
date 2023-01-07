@@ -3,13 +3,13 @@ use std::{path::Path, fs::DirEntry, env};
 const NODE_MODULE: &'static str = "node_modules";
 
 fn is_match_name_dir(dir: &DirEntry) -> bool {
-    let file = dir.file_name();
-    let file_name = match file.to_str() {
+    let path = dir.path();
+    let file_name = match path.to_str() {
         Some(name) => name,
         None => return false,
     };
 
-    if !(file_name == NODE_MODULE) {
+    if !(file_name.ends_with(NODE_MODULE)) {
         return false;
     }
 
