@@ -11,12 +11,13 @@ mod input_event;
 mod io_event;
 mod table;
 mod table_placeholder;
+mod guideline;
 
 use title::title;
 
 use crate::file_helper::{get_files_path, get_size, size};
 
-use self::{status::status_block, version::version_block, input_event::{InputEvent, InputEventType}, io_event::IoEventType, table::table, table_placeholder::table_placeholder};
+use self::{status::status_block, version::version_block, input_event::{InputEvent, InputEventType}, io_event::IoEventType, table::table, table_placeholder::table_placeholder, guideline::guideline};
 
 const CHANNEL_BUFFER: usize = 100;
 
@@ -316,10 +317,18 @@ fn drawn<B: Backend>(rect: &mut Frame<B>, app: &mut App) {
     let version = version_block();
     rect.render_widget(version, version_chunk[0]);
 
-    let mid_chunk = Layout::default()
+    let guideline_chunk = Layout::default()
     .direction(Direction::Vertical)
     .constraints([Constraint::Length(3), Constraint::Min(3)].as_ref())
     .split(version_chunk[1]);
+
+    let guideline = guideline();
+    rect.render_widget(guideline, guideline_chunk[0]);
+
+    let mid_chunk = Layout::default()
+    .direction(Direction::Vertical)
+    .constraints([Constraint::Length(3), Constraint::Min(3)].as_ref())
+    .split(guideline_chunk[1]);
 
     let status_block = status_block(app.total_size, app.time_init, app.free_space);
     rect.render_widget(status_block, mid_chunk[0]);
