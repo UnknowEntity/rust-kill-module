@@ -48,15 +48,24 @@ async fn search_folder(path: &Path) -> Vec<DirEntry> {
 
     let child_dir: Vec<DirEntry> = entries.filter_map(|entry| entry.ok()).filter(|entry| entry.path().is_dir() && !is_hidden(entry)).collect();
 
+    let mut ignore_dir: Option<usize> = None;
+    let mut result: Vec<DirEntry> = vec![];
     if let Some(dir_index) = child_dir.iter().position(|dir| is_match_name_dir(dir)) {
-        let child = child_dir.into_iter().nth(dir_index).unwrap();
-        return vec![child];
+        ignore_dir = Some(dir_index);
     }
 
     let mut set: JoinSet<Vec<DirEntry>> = JoinSet::new();
-    let mut result: Vec<DirEntry> = vec![];
 
-    for entry in child_dir.into_iter() {
+    for (index, entry) in child_dir.into_iter().enumerate() {
+        match ignore_dir {
+            Some(ignore_index) => {
+                if ignore_index == index {
+                    result.push(entry);
+                    continue;
+                }
+            },
+            _ => {}
+        }
         spawn_search_file(entry,&mut set);
     }
 
