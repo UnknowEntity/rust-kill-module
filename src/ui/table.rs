@@ -6,14 +6,34 @@ use super::{DirData, DirStatus};
 
 const ROW_BOTTOM_MARGIN: u16 = 1u16;
 
-fn map_status_to_str(status: &DirStatus) -> String {
-    match status {
+fn get_status_cell<'a>(status: &DirStatus) -> Cell<'a> {
+    let content = match status {
         DirStatus::Loading => "LOADING".to_owned(),
         DirStatus::Ready => "READY".to_owned(),
         DirStatus::Deleting => "DELETING".to_owned(),
         DirStatus::Deleted => "DELETED".to_owned(),
         DirStatus::Error => "ERROR".to_owned(),
-    }
+    };
+
+    let mut cell = Cell::from(content);
+
+    match status {
+        DirStatus::Ready => {
+            cell = cell.style(Style::default().fg(Color::Green));
+        },
+        DirStatus::Deleting => {
+            cell = cell.style(Style::default().fg(Color::Yellow));
+        },
+        DirStatus::Deleted => {
+            cell = cell.style(Style::default().fg(Color::Green).bg(Color::White));
+        },
+        DirStatus::Error => {
+            cell = cell.style(Style::default().fg(Color::Red));
+        },
+        _ => {}
+    };
+
+    cell
 }
 
 pub fn table<'a>(items: &Vec<DirData>) -> Table<'a> {
@@ -24,7 +44,7 @@ pub fn table<'a>(items: &Vec<DirData>) -> Table<'a> {
                 Some(byte) => Cell::from(size(byte)),
                 None => Cell::from(".."),
             },
-            Cell::from(map_status_to_str(&item.status))
+            get_status_cell(&item.status)
         ];
         Row::new(cells).bottom_margin(ROW_BOTTOM_MARGIN)
     }).collect();

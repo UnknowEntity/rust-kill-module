@@ -4,5 +4,9 @@ use ui::start_ui;
 
 #[tokio::main]
 async fn main() {
-    start_ui().await.expect("Start UI Error")
+    if let Ok(size) = start_ui().await {
+        println!("Free: {}", size);
+    } else {
+        println!("Error occurs");
+    }
 }

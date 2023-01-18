@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use humantime::format_duration;
-use tui::{widgets::{Paragraph, Wrap}, text::{Spans, Span}, style::{Style, Color}, layout::Alignment};
+use tui::{widgets::{Paragraph, Wrap}, text::{Spans, Span}, style::{Style, Color, Modifier}, layout::Alignment};
 
 use crate::file_helper::size;
 
@@ -9,7 +9,7 @@ fn info<'a>(field_name: String, value: String) -> Spans<'a> {
     Spans::from(vec![
         Span::raw(field_name),
         Span::raw(": "),
-        Span::styled(value, Style::default().fg(Color::Green))
+        Span::styled(value, Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
     ])
 }
 

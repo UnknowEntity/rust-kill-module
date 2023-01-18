@@ -14,7 +14,7 @@ mod table_placeholder;
 
 use title::title;
 
-use crate::file_helper::{get_files_path, get_size};
+use crate::file_helper::{get_files_path, get_size, size};
 
 use self::{status::status_block, version::version_block, input_event::{InputEvent, InputEventType}, io_event::IoEventType, table::table, table_placeholder::table_placeholder};
 
@@ -223,7 +223,7 @@ impl IoAsyncHandler {
     }
 }
 
-pub async fn start_ui() -> Result<(), io::Error> {
+pub async fn start_ui() -> Result<String, io::Error> {
     enable_raw_mode().expect("Error");
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture).expect("Error");
@@ -252,36 +252,36 @@ pub async fn start_ui() -> Result<(), io::Error> {
         }
     });
 
-    loop {
+    let free_space = loop {
         let mut app = app_ui.lock().await;
 
         // Render
         match terminal.draw(|rect| drawn(rect, &mut app)) {
-            Err(_) => break,
+            Err(_) => break app.free_space,
             _ => {}
         }
 
         if !is_initialize {
            if let Err(_) = sync_io_tx.send(IoEventType::Initialize).await {
-               break;
+               break app.free_space;
            }
            is_initialize = true;
         }
 
         let event = match events.next() {
-            Err(_) => break,
+            Err(_) => break app.free_space,
             Ok(event) => event,
         };
 
         // ② Handle inputs
         match event {
-            InputEventType::Quit => break,
+            InputEventType::Quit => break app.free_space,
             InputEventType::Up => app.previous(),
             InputEventType::Down => app.next(),
             InputEventType::Select => app.delete_file(),
             InputEventType::Tick => continue,
         }
-    }
+    };
 
     // restore terminal
     disable_raw_mode().expect("Error");
@@ -292,7 +292,7 @@ pub async fn start_ui() -> Result<(), io::Error> {
     ).expect("Error");
     terminal.show_cursor()?;
 
-    Ok(())
+    Ok(size(free_space))
 }
 
 fn drawn<B: Backend>(rect: &mut Frame<B>, app: &mut App) {
